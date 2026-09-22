@@ -1,0 +1,17 @@
+.DS_Store
+.AppleDouble/
+__MACOSX/
+work/
+outputs/*.app/
+outputs/*.zip
+outputs/*.png
+!outputs/闲着-0.6.1-桌面预览.png
+!outputs/闲着-0.6.1-随时调光.png
+outputs/*.html
+outputs/0.5效果对比/
+.env
+.env.*
+*.pem
+*.key
+
+outputs/0.4效果对比/
