@@ -1,8 +1,24 @@
-# 闲着 · Xianzhe 1.0
+<div align="center">
 
-“闲着”是一款原生 macOS 桌面光影玩具：它把当前使用的应用图标抠成有厚度的旋转物体，在模拟桌面和真实桌面上绘制灯光与阴影。
+<img src="https://img.shields.io/badge/原生_macOS-桌面光影玩具-D4A24E?style=for-the-badge&logo=apple&logoColor=white" alt="原生 macOS" />
 
-![摄影棚中的三维布光](outputs/闲着-1.0-三维布光.png)
+# 闲着 · Xianzhe
+
+**把当前使用的应用图标，抠成有厚度的旋转实体，然后给它打光。**
+
+蜡烛会烧完，太阳四分钟东升西落一次，手电筒和蜡烛是真几何模型 —— 不是 emoji 贴图。
+
+[![Release](https://img.shields.io/github/v/release/zhuangli410-commits/xianzhe?style=flat-square&label=release&color=D4A24E)](https://github.com/zhuangli410-commits/xianzhe/releases)
+![platform](https://img.shields.io/badge/platform-macOS_14%2B_arm64-000000?style=flat-square&logo=apple&logoColor=white)
+![Swift](https://img.shields.io/badge/Swift-F05138?style=flat-square&logo=swift&logoColor=white)
+![Metal](https://img.shields.io/badge/Metal_光线求交-000000?style=flat-square&logo=apple&logoColor=white)
+
+<img src="outputs/闲着-1.0-三维布光.png" width="680" alt="摄影棚中的三维布光" />
+
+</div>
+
+---
+
 
 ## 玩什么
 
@@ -38,3 +54,9 @@ open outputs/闲着.app
 ```
 
 检查记录见[开发进度](outputs/开发进度.md)与[测试记录](outputs/IdleIcon/测试记录.md)。[第一版操作手册](outputs/第一版开发操作手册.md)保留需求与阶段边界；本机可用 `outputs/打开逐项批注.command` 打开分区批注页，批注只写到本机，不在 GitHub 发布。
+
+---
+
+<div align="center">
+<sub>由 <b>李卓扬 · Aktive</b> 构建 · <a href="https://github.com/zhuangli410-commits">更多项目</a> · <a href="https://li-zhuoyang-ai-product-builder.zhuangli410.chatgpt.site">完整作品集</a></sub>
+</div>
