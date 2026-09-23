@@ -1,12 +1,10 @@
 <div align="center">
 
-<img src="https://img.shields.io/badge/原生_macOS-桌面光影玩具-D4A24E?style=for-the-badge&logo=apple&logoColor=white" alt="原生 macOS" />
-
 # 闲着 · Xianzhe
 
-**把当前使用的应用图标，抠成有厚度的旋转实体，然后给它打光。**
+把当前应用的图标抠成有厚度的实体，丢到桌面上给它打光。
 
-蜡烛会烧完，太阳四分钟东升西落一次，手电筒和蜡烛是真几何模型 —— 不是 emoji 贴图。
+蜡烛用着用着会烧完，太阳四分钟走完一天。
 
 [![Release](https://img.shields.io/github/v/release/zhuangli410-commits/xianzhe?style=flat-square&label=release&color=D4A24E)](https://github.com/zhuangli410-commits/xianzhe/releases)
 ![platform](https://img.shields.io/badge/platform-macOS_14%2B_arm64-000000?style=flat-square&logo=apple&logoColor=white)
@@ -58,5 +56,5 @@ open outputs/闲着.app
 ---
 
 <div align="center">
-<sub>由 <b>李卓扬 · Aktive</b> 构建 · <a href="https://github.com/zhuangli410-commits">更多项目</a> · <a href="https://li-zhuoyang-ai-product-builder.zhuangli410.chatgpt.site">完整作品集</a></sub>
+<sub><a href="https://github.com/zhuangli410-commits">李卓扬 Aktive</a> · <a href="https://li-zhuoyang-ai-product-builder.zhuangli410.chatgpt.site">作品集</a> · 有想知道的事，<a href="https://gongfu.youjixiezuo.top/#ask">问 SG Agent</a></sub>
 </div>
