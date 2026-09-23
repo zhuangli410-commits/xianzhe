@@ -7,7 +7,15 @@ outputs/*.zip
 outputs/*.png
 !outputs/闲着-0.6.1-桌面预览.png
 !outputs/闲着-0.6.1-随时调光.png
+!outputs/闲着-1.0-主界面.png
+!outputs/闲着-1.0-摄影棚.png
+!outputs/闲着-1.0-三维布光.png
+!outputs/闲着-1.0-昼夜布光.png
+!outputs/闲着-1.0-灯具模型.png
 outputs/*.html
+!outputs/逐项批注.html
+outputs/0.7审阅批注.json
+outputs/逐项批注记录.json
 outputs/0.5效果对比/
 .env
 .env.*

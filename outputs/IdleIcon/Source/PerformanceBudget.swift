@@ -31,3 +31,42 @@ struct PerformanceBudget {
         return (level,fps)
     }
 }
+
+// A separate dial for real per-pixel lighting work. GPU time is a feedback
+// signal, not a claim that we know the machine's unused GPU percentage.
+struct LightingWorkBudget {
+    private(set) var level=1
+    private var stableSince:Double?
+    private var slowCount=0
+    private var lastChange:Double = -100
+    private(set) var reason="正在观察绘制余量"
+    mutating func update(now:Double,mode:Int,manual:Int,costMS:Double?,pressure:String,thermal:Int,lowPower:Bool)->Int {
+        let ceiling=mode==0 ? 2 : mode==1 ? 4 : [0,2,4][max(0,min(2,manual))]
+        if pressure != "正常" || thermal>=2 || lowPower {
+            level=0;stableSince=nil;slowCount=0;lastChange=now
+            reason="系统需要资源，已降低光影计算"
+            return level
+        }
+        level=min(level,ceiling)
+        guard let cost=costMS,cost.isFinite,cost>0 else {
+            stableSince=nil;reason="等待新的 GPU 数据";return level
+        }
+        let target=mode==0 ? 5.0 : 11.0
+        if cost>target {
+            stableSince=nil;slowCount+=1;reason="绘制较慢，正在减轻计算"
+            if slowCount>=2 && now-lastChange>=3 {
+                level=max(0,level-1);lastChange=now;slowCount=0
+            }
+        } else {
+            slowCount=0
+            if cost<target*0.62 {
+                if stableSince==nil {stableSince=now}
+                if now-(stableSince ?? now)>=8 && now-lastChange>=8 && level<ceiling {
+                    level+=1;lastChange=now;stableSince=now
+                }
+                reason=level<ceiling ? "有绘制余量，逐步增加光影采样" : "当前模式已到光影上限"
+            } else {stableSince=nil;reason="保持当前光影强度"}
+        }
+        return level
+    }
+}

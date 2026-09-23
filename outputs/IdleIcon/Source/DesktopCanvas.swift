@@ -19,6 +19,7 @@ struct DesktopPlacement {
 
 final class DesktopCanvas:NSView {
     var renderView:MTKView!
+    var modelView:LightModelOverlay?
     var worldSize=NSSize(width:1440,height:900) {didSet{updatePlacement()}}
     var position=NSPoint(x:0.75,y:0.25) {didSet{updatePlacement()}}
     var iconSide:CGFloat=300 {didSet{updatePlacement()}}
@@ -41,9 +42,10 @@ final class DesktopCanvas:NSView {
     }
     required init?(coder:NSCoder) {fatalError()}
     func install(_ view:MTKView) {renderView=view;addSubview(view);updatePlacement()}
+    func installModels(_ view:LightModelOverlay) {modelView=view;addSubview(view);updatePlacement()}
     override func hitTest(_ point:NSPoint) -> NSView? {super.hitTest(point)==nil ? nil : self}
     override func layout() {super.layout();updatePlacement()}
-    private func updatePlacement() {renderView?.frame=DesktopPlacement.shadowFrame(iconFrame);needsDisplay=true;window?.invalidateCursorRects(for:self)}
+    private func updatePlacement() {let f=DesktopPlacement.shadowFrame(iconFrame);renderView?.frame=f;modelView?.frame=f;needsDisplay=true;window?.invalidateCursorRects(for:self)}
     override func resetCursorRects() {addCursorRect(iconFrame,cursor:.openHand)}
     override func mouseDown(with event:NSEvent) {
         let p=convert(event.locationInWindow,from:nil)

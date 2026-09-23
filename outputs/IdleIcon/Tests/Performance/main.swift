@@ -20,4 +20,14 @@ check(step(33,1,nil).0==0 && step(100,1,nil).0==0,"No promotion from stale or ab
 check(step(101).0==0 && step(121).0==1 && step(141).0==2,"Recovery is gradual after stable fresh samples")
 check(step(142,0).0==1 && step(142,0).1==30,"Companion mode clamps quality and rate")
 check(step(143,2,1,"正常",0,false,0).0==0,"Manual cap is obeyed")
+var light=LightingWorkBudget()
+func lighting(_ t:Double,_ cost:Double?=1,_ pressure:String="正常",_ thermal:Int=0,_ low:Bool=false)->Int {
+    light.update(now:t,mode:1,manual:2,costMS:cost,pressure:pressure,thermal:thermal,lowPower:low)
+}
+check(lighting(0)==1 && lighting(7)==1 && lighting(8)==2,"Lighting work increases only after stable fast samples")
+check(lighting(9,20)==2 && lighting(12,20)==1,"Sustained slow GPU work lowers sample count")
+check(lighting(13,1,"偏高")==0,"Memory pressure immediately lowers lighting work")
+check(lighting(30,nil)==0 && lighting(100,nil)==0,"Missing GPU observations never increase work")
+check(lighting(101)==0 && lighting(109)==1,"Lighting work recovers gradually")
+check(lighting(110,1,"正常",2)==0 && lighting(111,1,"正常",0,true)==0,"Heat and low-power force minimum")
 print("\(count) checks passed; policy simulation, not a real thermal stress test")

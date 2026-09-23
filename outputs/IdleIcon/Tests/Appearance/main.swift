@@ -6,13 +6,21 @@ let out=URL(fileURLWithPath:CommandLine.arguments[1]);try FileManager.default.cr
 let legacy=CommandLine.arguments.contains("--legacy")
 let gpu=MTLCreateSystemDefaultDevice()!
 var checks:[String]=[]
+var comparisons:[String:[UInt8]]=[:]
 func check(_ ok:Bool,_ message:String) {precondition(ok,message);checks.append(message);print("PASS: \(message)")}
 func save(_ cut:CutoutImage,_ name:String) throws {
     let data=NSBitmapImageRep(cgImage:cut.cgImage()!).representation(using:.png,properties:[:])!
     try data.write(to:out.appendingPathComponent(name+".png"))
 }
-struct CaptureUniforms {var mvp:simd_float4x4;var model:simd_float4x4;var time:SIMD4<Float>;var lightVP:simd_float4x4;var light:SIMD4<Float>;var tint:SIMD4<Float>;var settings:SIMD4<Float>}
-func capture(_ cut:CutoutImage,angle:Float,name:String,finish:Float=1,thickness:Float=1,studio:Bool=false,lightX:Float = -2,shadows:Bool=true,quality:Int=1,transparent:Bool=false,lightY:Float=2.5,lightZ:Float=4) throws {
+struct CaptureUniforms {
+    var mvp:simd_float4x4;var model:simd_float4x4;var inverseModel:simd_float4x4;var time:SIMD4<Float>;var lightVP:simd_float4x4
+    var light:SIMD4<Float>;var tint:SIMD4<Float>;var settings:SIMD4<Float>
+    var light1:SIMD4<Float>;var light2:SIMD4<Float>;var light3:SIMD4<Float>
+    var tint1:SIMD4<Float>;var tint2:SIMD4<Float>;var tint3:SIMD4<Float>
+    var vp1:simd_float4x4;var vp2:simd_float4x4;var vp3:simd_float4x4;var kinds:SIMD4<Float>
+    var direction0:SIMD4<Float>;var direction1:SIMD4<Float>;var direction2:SIMD4<Float>;var direction3:SIMD4<Float>
+}
+func capture(_ cut:CutoutImage,angle:Float,name:String,finish:Float=1,thickness:Float=1,studio:Bool=false,lightX:Float = -2,shadows:Bool=true,quality:Int=1,transparent:Bool=false,lightY:Float=2.5,lightZ:Float=4,extra:[SceneLight]=[]) throws {
     let asset=try RenderAsset.make(cut,device:gpu),size=640
     let descriptor=MTLRenderPipelineDescriptor();let library=try gpu.makeLibrary(source:IconRenderer.shader,options:nil)
     descriptor.vertexFunction=library.makeFunction(name:"vertex_main");descriptor.fragmentFunction=library.makeFunction(name:"fragment_main")
@@ -43,21 +51,36 @@ func capture(_ cut:CutoutImage,angle:Float,name:String,finish:Float=1,thickness:
     var projection=simd_float4x4(columns:(SIMD4(y,0,0,0),SIMD4(0,y,0,0),SIMD4(0,0,far/(near-far),-1),SIMD4(0,0,far*near/(near-far),0)))
     if transparent {projection=simd_float4x4(diagonal:SIMD4<Float>(1/Float(IconRenderer.desktopPadding),1/Float(IconRenderer.desktopPadding),1,1))*projection}
     var translation=matrix_identity_float4x4;translation.columns.3.z = -4.4
-    let light=SIMD3<Float>(lightX,lightY,lightZ),z=simd_normalize(light),x=simd_normalize(simd_cross(SIMD3<Float>(0,1,0),z)),yy=simd_cross(z,x)
+    let light=SIMD3<Float>(lightX,lightY,lightZ),primary=SceneLight(kind:.studio,x:lightX,y:lightY,z:lightZ)
+    let z = -primary.direction,x=simd_normalize(simd_cross(SIMD3<Float>(0,1,0),z)),yy=simd_cross(z,x)
     let lightView=simd_float4x4(rows:[SIMD4(x,-simd_dot(x,light)),SIMD4(yy,-simd_dot(yy,light)),SIMD4(z,-simd_dot(z,light)),SIMD4(0,0,0,1)])
     let lightVP=simd_float4x4(diagonal:SIMD4<Float>(1/3.5,1/3.5,-1/15,1))*lightView
-    var u=CaptureUniforms(mvp:projection*translation*model,model:model,time:SIMD4(angle,0,finish,thickness),lightVP:lightVP,light:SIMD4(light,1),tint:SIMD4(1,0.93,0.83,1),settings:SIMD4((studio || transparent) && shadows ? 1:0,Float(quality),transparent ? 1:0,0))
-    let sd=MTLTextureDescriptor.texture2DDescriptor(pixelFormat:.depth32Float,width:[512,1024,2048][quality],height:[512,1024,2048][quality],mipmapped:false);sd.storageMode = .private;sd.usage=[.renderTarget,.shaderRead]
-    let shadow=gpu.makeTexture(descriptor:sd)!,sp=MTLRenderPassDescriptor();sp.depthAttachment.texture=shadow;sp.depthAttachment.loadAction = .clear;sp.depthAttachment.storeAction = .store;sp.depthAttachment.clearDepth=1
-    let se=command.makeRenderCommandEncoder(descriptor:sp)!
-    if (studio || transparent) && shadows {
-        let pd=MTLRenderPipelineDescriptor();pd.vertexFunction=library.makeFunction(name:"shadow_vertex");pd.fragmentFunction=library.makeFunction(name:"shadow_fragment");pd.depthAttachmentPixelFormat = .depth32Float
-        se.setRenderPipelineState(try gpu.makeRenderPipelineState(descriptor:pd));se.setDepthStencilState(gpu.makeDepthStencilState(descriptor:dd));se.setCullMode(.none);se.setDepthBias(0.002,slopeScale:1.5,clamp:0.01)
-        se.setVertexBuffer(asset.vertices,offset:0,index:0);se.setVertexBytes(&u,length:MemoryLayout<CaptureUniforms>.stride,index:1);se.setFragmentTexture(asset.texture,index:0);se.drawPrimitives(type:.triangle,vertexStart:0,vertexCount:asset.vertexCount)
+    let off=SceneLight(kind:.studio,x:0,y:0,z:4,power:0)
+    let additional=(Array(extra.prefix(3))+Array(repeating:off,count:max(0,3-extra.count))).prefix(3).map{$0}
+    func vp(_ lamp:SceneLight)->simd_float4x4 {
+        let p=lamp.position,z=lamp.kind == .flashlight || lamp.kind == .studio ? -lamp.direction : simd_normalize(p)
+        let up=abs(z.y)>0.97 ? SIMD3<Float>(0,0,1) : SIMD3<Float>(0,1,0)
+        let x=simd_normalize(simd_cross(up,z)),y=simd_cross(z,x)
+        let view=simd_float4x4(rows:[SIMD4(x,-simd_dot(x,p)),SIMD4(y,-simd_dot(y,p)),SIMD4(z,-simd_dot(z,p)),SIMD4(0,0,0,1)])
+        return simd_float4x4(diagonal:SIMD4<Float>(1/3.5,1/3.5,-1/15,1))*view
     }
-    se.endEncoding()
+    func lightValue(_ i:Int)->SIMD4<Float> {SIMD4(additional[i].position,additional[i].enabled ? additional[i].power : 0)}
+    func tintValue(_ i:Int)->SIMD4<Float> {SIMD4(IconColor(hex:additional[i].hex)?.rgb ?? SIMD3<Float>(1,1,1),1)}
+    var u=CaptureUniforms(mvp:projection*translation*model,model:model,inverseModel:simd_inverse(model),time:SIMD4(angle,0,finish,thickness),lightVP:lightVP,light:SIMD4(light,1),tint:SIMD4(1,0.93,0.83,1),settings:SIMD4((studio || transparent) && shadows ? 1:0,Float(quality),transparent ? 1:0,4),light1:lightValue(0),light2:lightValue(1),light3:lightValue(2),tint1:tintValue(0),tint2:tintValue(1),tint3:tintValue(2),vp1:vp(additional[0]),vp2:vp(additional[1]),vp3:vp(additional[2]),kinds:SIMD4(0,Float(additional[0].kind.rawValue),Float(additional[1].kind.rawValue),Float(additional[2].kind.rawValue)),direction0:SIMD4(primary.direction,0),direction1:SIMD4(additional[0].direction,0),direction2:SIMD4(additional[1].direction,0),direction3:SIMD4(additional[2].direction,0))
+    let sd=MTLTextureDescriptor.texture2DDescriptor(pixelFormat:.depth32Float,width:[512,1024,2048][quality],height:[512,1024,2048][quality],mipmapped:false);sd.storageMode = .private;sd.usage=[.renderTarget,.shaderRead]
+    let maps=(0..<4).map {_ in gpu.makeTexture(descriptor:sd)!}
+    let pd=MTLRenderPipelineDescriptor();pd.vertexFunction=library.makeFunction(name:"shadow_vertex");pd.fragmentFunction=library.makeFunction(name:"shadow_fragment");pd.depthAttachmentPixelFormat = .depth32Float
+    let shadowPipeline=try gpu.makeRenderPipelineState(descriptor:pd)
+    for i in 0..<4 where (studio || transparent) && shadows && (i==0 || additional[i-1].enabled && additional[i-1].power>0) {
+        let sp=MTLRenderPassDescriptor();sp.depthAttachment.texture=maps[i];sp.depthAttachment.loadAction = .clear;sp.depthAttachment.storeAction = .store;sp.depthAttachment.clearDepth=1
+        let se=command.makeRenderCommandEncoder(descriptor:sp)!
+        var su=u;su.time.y=Float(i)
+        se.setRenderPipelineState(shadowPipeline);se.setDepthStencilState(gpu.makeDepthStencilState(descriptor:dd));se.setCullMode(.none);se.setDepthBias(0.002,slopeScale:1.5,clamp:0.01)
+        se.setVertexBuffer(asset.vertices,offset:0,index:0);se.setVertexBytes(&su,length:MemoryLayout<CaptureUniforms>.stride,index:1);se.setFragmentTexture(asset.texture,index:0);se.drawPrimitives(type:.triangle,vertexStart:0,vertexCount:asset.vertexCount)
+        se.endEncoding()
+    }
     let encoder=command.makeRenderCommandEncoder(descriptor:pass)!
-    encoder.setFragmentTexture(shadow,index:3)
+    for index in 3...6 {encoder.setFragmentTexture(maps[index-3],index:index)}
     if studio || transparent {
         let points:[SIMD2<Float>]=[SIMD2(-8,-8),SIMD2(8,-8),SIMD2(8,8),SIMD2(-8,-8),SIMD2(8,8),SIMD2(-8,8)]
         let ground=points.map{IconVertex(position:SIMD4($0.x,$0.y,-1.6,1),normal:SIMD4(0,0,1,0),uvKind:SIMD4(0,0,2,0))}
@@ -74,6 +97,7 @@ func capture(_ cut:CutoutImage,angle:Float,name:String,finish:Float=1,thickness:
     check(command.status == .completed,"GPU capture completed: \(name)")
     var bytes=[UInt8](repeating:0,count:size*size*4);resolved.getBytes(&bytes,bytesPerRow:size*4,from:MTLRegionMake2D(0,0,size,size),mipmapLevel:0)
     for i in stride(from:0,to:bytes.count,by:4) {bytes.swapAt(i,i+2)}
+    if name.hasPrefix("multi-") {comparisons[name]=bytes}
     try save(CutoutImage(size:size,pixels:bytes,method:"GPU",retainedFraction:1),name)
 }
 if !legacy {
@@ -89,6 +113,22 @@ if !legacy {
     inspection.mouseDragged(with:mouse(.leftMouseDragged,NSPoint(x:140,y:120)))
     inspection.mouseUp(with:mouse(.leftMouseUp,NSPoint(x:140,y:120)))
     check(abs(moved.x-0.8)<0.001 && abs(moved.y-0.4)<0.001 && abs(orbit.x-0.48)<0.001,"Light drag moves light without changing camera")
+    var aimed=SceneLight(kind:.flashlight,x:2,y:1,z:4,power:2,hex:"#69B8FF")
+    let originalDirection=aimed.direction
+    aimed.turn(horizontal:1.8,vertical:0.2)
+    check(simd_dot(originalDirection,aimed.direction)<0.8,"Hold-and-drag direction changes flashlight beam vector")
+    let restored=try JSONDecoder().decode(SceneLight.self,from:JSONEncoder().encode(aimed))
+    check(simd_distance(restored.direction,aimed.direction)<0.0001,"Lamp orientation survives save and reopen")
+    let legacyLamp=try JSONDecoder().decode(SceneLight.self,from:Data("{\"kind\":1,\"x\":2,\"y\":1,\"z\":4,\"power\":1,\"hex\":\"#FFFFFF\",\"enabled\":true}".utf8))
+    check(legacyLamp.direction.z<0,"Older saved lamps receive a safe downward aim")
+    var candle=SceneLight(kind:.candle,x:1,y:1,z:1.1)
+    candle.elapsed=300
+    check(abs(candle.burnFraction-0.5)<0.001 && candle.resolved().z<1.1 && candle.resolved().power<0.34,"Candle becomes shorter and dimmer over its burn cycle")
+    candle.elapsed=600
+    check(!candle.resolved().enabled,"Spent candle stops illuminating until relit")
+    var sun=SceneLight(kind:.sun,x:0,y:1.5,z:7)
+    let morning=sun.resolved();sun.elapsed=60;let noon=sun.resolved();sun.elapsed=145;let night=sun.resolved()
+    check(morning.kind == .sun && noon.x>morning.x && noon.z>morning.z && night.kind == .moon && night.power<noon.power,"Sun travels across the scene, then gives way to a dim moon")
     let n=64
     let colors:[SIMD3<UInt8>]=[SIMD3(240,20,25),SIMD3(20,210,40),SIMD3(25,70,245),SIMD3(240,240,240)]
     var bytes=[UInt8](repeating:0,count:n*n*4)
@@ -112,7 +152,6 @@ if !legacy {
     for y in 0..<256 {for x in 0..<256 {for c in 0..<3 {ramp[(y*256+x)*4+c]=UInt8(60+x/2)}}}
     let gradient=CutoutImage(size:256,pixels:ramp,method:"gradient",retainedFraction:1),shades=IconPalette.colors(in:gradient)
     let single=IconPalette.recolor(gradient,palette:shades,replacements:Dictionary(uniqueKeysWithValues:shades.map{($0.hex,"#65D6AA")}))
-    let jumps=(1..<256).map{abs(Int(single.pixels[(128*256+$0)*4])-Int(single.pixels[(128*256+$0-1)*4]))}
     var baseline=SIMD3<Float>.zero,weight:Float=0
     for shade in shades {let w=Float(max(0.001,shade.share));baseline+=IconPalette.lab(shade.rgb)*w;weight+=w};baseline/=weight
     let targetLab=IconPalette.lab(IconColor(hex:"#65D6AA")!.rgb)
@@ -163,6 +202,22 @@ if !legacy {
     try capture(ring,angle:0.1,name:"studio-ring-light",studio:true,quality:0)
     try capture(ring,angle:0.85,name:"ring-smoothed")
     try capture(ring,angle:1.35,name:"ring-near-side",finish:2,thickness:2.5)
+    try capture(ring,angle:0.45,name:"multi-base",transparent:true)
+    var offLamp=SceneLight(kind:.flashlight,x:2,y:1,z:4,power:1.8)
+    offLamp.enabled=false
+    try capture(ring,angle:0.45,name:"multi-disabled",transparent:true,extra:[offLamp])
+    try capture(ring,angle:0.45,name:"multi-flashlight",transparent:true,extra:[SceneLight(kind:.flashlight,x:2,y:1,z:4,power:1.8,hex:"#69B8FF")])
+    let centeredFlash=SceneLight(kind:.flashlight,x:2,y:1,z:4,power:1.8,hex:"#69B8FF")
+    var turnedFlash=centeredFlash;turnedFlash.turn(horizontal:2.2,vertical:0)
+    try capture(ring,angle:0.45,name:"multi-flash-ahead",transparent:true,extra:[centeredFlash])
+    try capture(ring,angle:0.45,name:"multi-flash-away",transparent:true,extra:[turnedFlash])
+    try capture(ring,angle:0.45,name:"multi-sun",transparent:true,extra:[SceneLight(kind:.sun,x:3,y:2,z:7,power:1.2)])
+    try capture(ring,angle:0.45,name:"multi-candle",transparent:true,extra:[SceneLight(kind:.candle,x:1,y:-1,z:1.5,power:2)])
+    func diffPixels(_ a:String,_ b:String)->Int {zip(comparisons[a]!,comparisons[b]!).filter{abs(Int($0)-Int($1))>5}.count}
+    check(diffPixels("multi-base","multi-disabled")==0,"Disabled auxiliary lamp reproduces the single-light pixels")
+    check(diffPixels("multi-base","multi-flashlight")>1000,"Flashlight changes actual rendered icon and shadow pixels")
+    check(diffPixels("multi-flash-ahead","multi-flash-away")>1000,"Turning flashlight changes its rendered illumination and shadow")
+    check(diffPixels("multi-flashlight","multi-sun")>1000 && diffPixels("multi-sun","multi-candle")>1000,"Lamp kinds produce distinct rendered effects")
     #endif
 }
 var measurements:[[String:Any]]=[]

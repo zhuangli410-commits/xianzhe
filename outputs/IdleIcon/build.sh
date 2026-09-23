@@ -6,7 +6,7 @@ BUILD="$ROOT/../../work/build"
 mkdir -p "$BUILD" "$DEST/Contents/MacOS" "$DEST/Contents/Resources"
 xcrun swiftc -swift-version 5 -O -target arm64-apple-macosx14.0 \
   -module-cache-path "$BUILD/module-cache" \
-  "$ROOT/Source/SystemMonitor.swift" "$ROOT/Source/MemoryPlayground.swift" "$ROOT/Source/Dashboard.swift" "$ROOT/Source/IconCutout.swift" "$ROOT/Source/IconPalette.swift" "$ROOT/Source/IconContour.swift" "$ROOT/Source/IconRenderer.swift" "$ROOT/Source/DesktopCanvas.swift" "$ROOT/Source/InspectorCanvas.swift" "$ROOT/Source/PerformanceBudget.swift" "$ROOT/Source/main.swift" \
+  "$ROOT/Source/SystemMonitor.swift" "$ROOT/Source/MemoryPlayground.swift" "$ROOT/Source/Dashboard.swift" "$ROOT/Source/IconCutout.swift" "$ROOT/Source/IconPalette.swift" "$ROOT/Source/IconContour.swift" "$ROOT/Source/LampModels.swift" "$ROOT/Source/SceneLights.swift" "$ROOT/Source/IconRenderer.swift" "$ROOT/Source/DesktopCanvas.swift" "$ROOT/Source/InspectorCanvas.swift" "$ROOT/Source/PerformanceBudget.swift" "$ROOT/Source/main.swift" \
   -framework AppKit -framework Metal -framework MetalKit -framework UniformTypeIdentifiers -framework Vision -framework CoreImage \
   -o "$DEST/Contents/MacOS/IdleIcon"
 cat > "$DEST/Contents/Info.plist" <<'PLIST'
@@ -19,10 +19,10 @@ cat > "$DEST/Contents/Info.plist" <<'PLIST'
 <key>CFBundleExecutable</key><string>IdleIcon</string>
 <key>CFBundleIconFile</key><string>AppIcon</string>
 <key>CFBundlePackageType</key><string>APPL</string>
-<key>CFBundleShortVersionString</key><string>0.6.1</string>
-<key>CFBundleVersion</key><string>7</string>
+<key>CFBundleShortVersionString</key><string>1.0.0</string>
+<key>CFBundleVersion</key><string>13</string>
 <key>LSMinimumSystemVersion</key><string>14.0</string>
-<key>LSUIElement</key><true/>
+<key>LSUIElement</key><false/>
 <key>NSHighResolutionCapable</key><true/>
 <key>NSSupportsAutomaticGraphicsSwitching</key><true/>
 </dict></plist>
