@@ -15,7 +15,7 @@
 
 ## 下载与运行
 
-从 [v1.0.0 发布页](https://github.com/zhuangli410-commits/xianzhe/releases/tag/v1.0.0)下载 ZIP，解压后打开“闲着.app”。本地构建需 macOS 和 Xcode Command Line Tools：
+下载 [Mac 安装包](https://github.com/zhuangli410-commits/xianzhe/releases/download/v1.0.0/xianzhe-1.0.0-macOS-arm64.zip)（[发布页与校验文件](https://github.com/zhuangli410-commits/xianzhe/releases/tag/v1.0.0)），解压后打开“闲着.app”。本地构建需 macOS 和 Xcode Command Line Tools：
 
 ```sh
 ./outputs/IdleIcon/build.sh
